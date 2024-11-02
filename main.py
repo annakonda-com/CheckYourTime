@@ -51,7 +51,7 @@ class TimeInputPage(QWidget):
     def write(self):
         date = str(datetime.now()).split()[0]
         if self.name.text() != '' and self.timeEdit.text() != '0:00':
-            maybe_id = self.cur.execute("""SELECT id FROM doings WHERE name LIKE ? LIMIT 1""", (self.name.text(), )).fetchall()
+            maybe_id = self.cur.execute("""SELECT id FROM doings WHERE LOWER(name) LIKE ? LIMIT 1""", (self.name.text().lower(), )).fetchall()
             if maybe_id == []:
                 self.cur.execute("""INSERT INTO doings (name) VALUES (?)""", (self.name.text(),))
                 doing_id = self.cur.lastrowid
@@ -72,10 +72,41 @@ class TimeInputPage(QWidget):
     def closeEvent(self, event):
         self.connection.close()
 
+class TimerPage(QWidget):
+    def __init__(self):
+        super().__init__()
+        uic.loadUi("TimerPage.ui", self)
+        self.start = True
+        self.doing.setText('')
+        self.startstopbtn.clicked.connect(self.btnclicked)
+
+    def btnclicked(self):
+        if self.start:
+            if str(self.doing.text()) == '':
+                self.warning.setText('Введите название!')
+            else:
+                self.warning.setText('')
+                self.doing.setReadOnly(True)
+                self.startstopbtn.setText('СТОП')
+                self.start = False
+                date = str(datetime.now()).split()[0]
+                self.time = datetime.now()
+                self.timer()
+        else:
+            self.startstopbtn.setText('СТАРТ')
+            self.start = True
+
+    def timer(self):
+        while not self.start:
+            diffsec = (datetime.now() - self.time).seconds
+            self.hours.display(diffsec)
+
+
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    ex = TimeInputPage()
+    ex = TimerPage()
     ex.show()
     sys.excepthook = except_hook
     sys.exit(app.exec())
