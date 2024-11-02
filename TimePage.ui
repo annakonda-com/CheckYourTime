@@ -16,10 +16,10 @@
   <widget class="QWidget" name="gridLayoutWidget">
    <property name="geometry">
     <rect>
-     <x>84</x>
-     <y>240</y>
+     <x>80</x>
+     <y>130</y>
      <width>621</width>
-     <height>151</height>
+     <height>101</height>
     </rect>
    </property>
    <layout class="QHBoxLayout" name="horizontalLayout">
@@ -27,7 +27,18 @@
      <widget class="QLineEdit" name="name"/>
     </item>
     <item>
-     <widget class="QTimeEdit" name="timeEdit"/>
+     <widget class="QTimeEdit" name="timeEdit">
+      <property name="minimumDateTime">
+       <datetime>
+        <hour>0</hour>
+        <minute>1</minute>
+        <second>0</second>
+        <year>2000</year>
+        <month>1</month>
+        <day>1</day>
+       </datetime>
+      </property>
+     </widget>
     </item>
     <item>
      <widget class="QPushButton" name="done">
@@ -42,7 +53,7 @@
    <property name="geometry">
     <rect>
      <x>90</x>
-     <y>160</y>
+     <y>50</y>
      <width>611</width>
      <height>80</height>
     </rect>
@@ -63,6 +74,42 @@
      </widget>
     </item>
    </layout>
+  </widget>
+  <widget class="QLabel" name="status">
+   <property name="geometry">
+    <rect>
+     <x>40</x>
+     <y>270</y>
+     <width>161</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Ранее вы вводили:</string>
+   </property>
+  </widget>
+  <widget class="QTextBrowser" name="previous">
+   <property name="geometry">
+    <rect>
+     <x>45</x>
+     <y>311</y>
+     <width>701</width>
+     <height>271</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QLabel" name="warnings">
+   <property name="geometry">
+    <rect>
+     <x>270</x>
+     <y>0</y>
+     <width>321</width>
+     <height>41</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
   </widget>
  </widget>
  <resources/>
