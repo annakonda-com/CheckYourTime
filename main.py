@@ -9,6 +9,10 @@ from datetime import datetime
 def except_hook(cls, exception, traceback):
     sys.__excepthook__(cls, exception, traceback)
 
+def back_to_main(prev_page):
+    prev_page.close()
+    ex = MainPage()
+    ex.show()
 
 class MainPage(QMainWindow):
     def __init__(self):
@@ -30,12 +34,15 @@ class MainPage(QMainWindow):
         self.timer_form = TimerPage()
         self.timer_form.show()
 
-
 class StatisticPage(QWidget):
     def __init__(self):
         super().__init__()
-        uic.loadUi("StatisticPage.ui")
+        uic.loadUi("StatisticPage.ui", self)
         self.setValues()
+        self.back.clicked.connect(self.back_fun)
+
+    def back_fun(self):
+        back_to_main(self)
 
     def setValues(self):
         pass
@@ -49,6 +56,10 @@ class TimeInputPage(QWidget):
         self.cur = self.connection.cursor()
         self.get_previous()
         self.done.clicked.connect(self.write)
+        self.back.clicked.connect(self.back_fun)
+
+    def back_fun(self):
+        back_to_main(self)
 
 
     def write(self):
@@ -82,6 +93,10 @@ class TimerPage(QWidget):
         self.start = True
         self.doing.setText('')
         self.startstopbtn.clicked.connect(self.btnclicked)
+        self.back.clicked.connect(self.back_fun)
+
+    def back_fun(self):
+        back_to_main(self)
 
     def btnclicked(self):
         if self.start:
