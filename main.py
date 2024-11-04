@@ -19,13 +19,16 @@ class MainPage(QMainWindow):
         self.timer.clicked.connect(self.timerclicked)
 
     def statistclicked(self):
-        pass
+        self.statistic_form = StatisticPage()
+        self.statistic_form.show()
 
     def timeclicked(self):
-        pass
+        self.timeinput_form = TimeInputPage()
+        self.timeinput_form.show()
 
     def timerclicked(self):
-        pass
+        self.timer_form = TimerPage()
+        self.timer_form.show()
 
 
 class StatisticPage(QWidget):
@@ -106,7 +109,7 @@ class TimerPage(QWidget):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    ex = TimeInputPage()
+    ex = MainPage()
     ex.show()
     sys.excepthook = except_hook
     sys.exit(app.exec())
