@@ -106,7 +106,7 @@ class TimerPage(QWidget):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    ex = TimerPage()
+    ex = TimeInputPage()
     ex.show()
     sys.excepthook = except_hook
     sys.exit(app.exec())
