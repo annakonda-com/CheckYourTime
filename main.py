@@ -15,13 +15,15 @@ def back_to_main(prev_page):
     ex = MainPage()
     ex.show()
 
+
 def get_previous(entity, limit):
-    previous = cur.execute("""SELECT name FROM doings ORDER BY id DESC LIMIT ?""", (limit, )).fetchall()
+    previous = cur.execute("""SELECT name FROM doings ORDER BY id DESC LIMIT ?""", (limit,)).fetchall()
     entity.previous.setText('\n'.join([prev[0] for prev in previous]))
 
 
 connection = sqlite3.connect("CheckTimeDB.sqlite")
 cur = connection.cursor()
+
 
 class MainPage(QMainWindow):
     def __init__(self):
@@ -30,7 +32,6 @@ class MainPage(QMainWindow):
         self.statistic.clicked.connect(self.statistclicked)
         self.time.clicked.connect(self.timeclicked)
         self.timer.clicked.connect(self.timerclicked)
-
 
     def statistclicked(self):
         self.statistic_form = StatisticPage()
@@ -70,7 +71,6 @@ class TimeInputPage(QWidget):
         self.done.clicked.connect(self.write)
         self.back.clicked.connect(self.back_fun)
 
-
     def back_fun(self):
         back_to_main(self)
 
@@ -78,7 +78,7 @@ class TimeInputPage(QWidget):
         date = str(datetime.now()).split()[0]
         if self.name.text() != '' and self.timeEdit.text() != '0:00':
             maybe_id = cur.execute("""SELECT id FROM doings WHERE LOWER(name) LIKE ? LIMIT 1""",
-                                        (self.name.text().lower(),)).fetchall()
+                                   (self.name.text().lower(),)).fetchall()
             print(maybe_id)
             if maybe_id == []:
                 cur.execute("""INSERT INTO doings (name) VALUES (?)""", (self.name.text(),))
@@ -95,10 +95,6 @@ class TimeInputPage(QWidget):
             self.warnings.setText("Оба поля должны быть заполнены!")
 
 
-
-
-
-
 class TimerPage(QWidget):
     def __init__(self):
         super().__init__()
@@ -108,7 +104,6 @@ class TimerPage(QWidget):
         self.startstopbtn.clicked.connect(self.btnclicked)
         self.back.clicked.connect(self.back_fun)
         get_previous(self, 15)
-
 
     def back_fun(self):
         back_to_main(self)
@@ -155,11 +150,6 @@ class TimerPage(QWidget):
             self.minuts.display(0)
             self.doing.setText('')
             self.warning.setText('')
-
-
-
-
-
 
 
 if __name__ == '__main__':
