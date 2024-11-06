@@ -59,8 +59,25 @@ class StatisticPage(QWidget):
     def back_fun(self):
         back_to_main(self)
 
+    def do_dict(self, arr):
+        res = {}
+        for el in arr:
+            if el[1] in res:
+                res[el[1]] += el[0]
+            else:
+                res[el[1]] = el[0]
+        return res
+
+
     def setValues(self):
-        pass
+        res = cur.execute("SELECT * FROM timecheck LIMIT 1").fetchall()
+        if res != []:
+            self.day.setText('За день:')
+            self.month.setText('За неделю:')
+            day_values = cur.execute("""SELECT timecheck.duration, doings.name FROM 
+            timecheck JOIN doings ON doings.id = doingid WHERE startdate = ?""",
+                                     (str(datetime.now()).split()[0],)).fetchall()
+
 
 
 class TimeInputPage(QWidget):
@@ -79,7 +96,6 @@ class TimeInputPage(QWidget):
         if self.name.text() != '' and self.timeEdit.text() != '0:00':
             maybe_id = cur.execute("""SELECT id FROM doings WHERE LOWER(name) LIKE ? LIMIT 1""",
                                    (self.name.text().lower(),)).fetchall()
-            print(maybe_id)
             if maybe_id == []:
                 cur.execute("""INSERT INTO doings (name) VALUES (?)""", (self.name.text(),))
                 doing_id = cur.lastrowid
