@@ -13,46 +13,11 @@
   <property name="windowTitle">
    <string>CheckYourTime</string>
   </property>
-  <widget class="QWidget" name="formLayoutWidget">
+  <widget class="QLabel" name="week">
    <property name="geometry">
     <rect>
-     <x>19</x>
-     <y>159</y>
-     <width>371</width>
-     <height>421</height>
-    </rect>
-   </property>
-   <layout class="QFormLayout" name="daylayout"/>
-  </widget>
-  <widget class="QWidget" name="gridLayoutWidget">
-   <property name="geometry">
-    <rect>
-     <x>419</x>
-     <y>159</y>
-     <width>361</width>
-     <height>421</height>
-    </rect>
-   </property>
-   <layout class="QGridLayout" name="layout"/>
-  </widget>
-  <widget class="QLabel" name="day">
-   <property name="geometry">
-    <rect>
-     <x>30</x>
-     <y>100</y>
-     <width>231</width>
-     <height>41</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string/>
-   </property>
-  </widget>
-  <widget class="QLabel" name="month">
-   <property name="geometry">
-    <rect>
-     <x>420</x>
-     <y>100</y>
+     <x>400</x>
+     <y>90</y>
      <width>341</width>
      <height>41</height>
     </rect>
@@ -85,6 +50,39 @@
    </property>
    <property name="text">
     <string>Вернуться на главный экран</string>
+   </property>
+  </widget>
+  <widget class="QTextBrowser" name="day_stat">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>150</y>
+     <width>381</width>
+     <height>441</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QTextBrowser" name="week_stat">
+   <property name="geometry">
+    <rect>
+     <x>410</x>
+     <y>150</y>
+     <width>381</width>
+     <height>441</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QLabel" name="day">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>100</y>
+     <width>341</width>
+     <height>41</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string/>
    </property>
   </widget>
  </widget>

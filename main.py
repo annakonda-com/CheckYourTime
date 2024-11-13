@@ -3,7 +3,7 @@ import sqlite3
 
 from PyQt6.QtWidgets import QMainWindow, QApplication, QWidget, QMessageBox
 from PyQt6 import uic
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 def except_hook(cls, exception, traceback):
@@ -20,9 +20,27 @@ def get_previous(entity, limit):
     previous = cur.execute("""SELECT name FROM doings ORDER BY id DESC LIMIT ?""", (limit,)).fetchall()
     entity.previous.setText('\n'.join([prev[0] for prev in previous]))
 
+def do_dict(arr):   # принимает список кортежей вида (время, название) и создаёт словарь с сумой времени для каждой задачи
+    res = {}
+    for el in arr:
+        if el[1] in res:
+            res[el[1]] += el[0]
+        else:
+            res[el[1]] = el[0]
+    return res
+
+def mylower(line):
+    return line.lower()
 
 connection = sqlite3.connect("CheckTimeDB.sqlite")
 cur = connection.cursor()
+connection.create_function('MYLOWER', 1, mylower)
+
+
+def clean_db():
+    cur.execute("""DELETE FROM timecheck WHERE startdate > '2024-09-01' AND startdate < ?""",
+                (str(datetime.now() - timedelta(days=8)).split()[0],))
+    connection.commit()
 
 
 class MainPage(QMainWindow):
@@ -55,29 +73,29 @@ class StatisticPage(QWidget):
         uic.loadUi("StatisticPage.ui", self)
         self.setValues()
         self.back.clicked.connect(self.back_fun)
+        clean_db()
 
     def back_fun(self):
         back_to_main(self)
 
-    def do_dict(self, arr):
-        res = {}
-        for el in arr:
-            if el[1] in res:
-                res[el[1]] += el[0]
-            else:
-                res[el[1]] = el[0]
-        return res
-
-
     def setValues(self):
-        res = cur.execute("SELECT * FROM timecheck LIMIT 1").fetchall()
-        if res != []:
-            self.day.setText('За день:')
-            self.month.setText('За неделю:')
-            day_values = cur.execute("""SELECT timecheck.duration, doings.name FROM 
+        for_day = cur.execute("""SELECT timecheck.duration, doings.name FROM 
             timecheck JOIN doings ON doings.id = doingid WHERE startdate = ?""",
-                                     (str(datetime.now()).split()[0],)).fetchall()
-
+                              (str(datetime.now()).split()[0],)).fetchall()
+        for_week = cur.execute("""SELECT timecheck.duration, doings.name FROM 
+            timecheck JOIN doings ON doings.id = doingid WHERE startdate BETWEEN ? AND ?""",
+                               (str(datetime.now() - timedelta(days=7)).split()[0],
+                                str(datetime.now()).split()[0])).fetchall()
+        if for_day != []:
+            self.day.setText('За день:')
+            for_day = do_dict(for_day)
+            for_day_text = '\n'.join([name + '\t' + str(for_day[name]) for name in for_day])
+            self.day_stat.setText(for_day_text)
+        if for_week != []:
+            self.week.setText('За неделю:')
+            for_week = do_dict(for_week)
+            for_week_text = '\n'.join([name + '\t' + str(for_week[name]) for name in for_week])
+            self.week_stat.setText(for_week_text)
 
 
 class TimeInputPage(QWidget):
@@ -94,7 +112,7 @@ class TimeInputPage(QWidget):
     def write(self):
         date = str(datetime.now()).split()[0]
         if self.name.text() != '' and self.timeEdit.text() != '0:00':
-            maybe_id = cur.execute("""SELECT id FROM doings WHERE LOWER(name) LIKE ? LIMIT 1""",
+            maybe_id = cur.execute("""SELECT id FROM doings WHERE MYLOWER(name) LIKE ? LIMIT 1""",
                                    (self.name.text().lower(),)).fetchall()
             if maybe_id == []:
                 cur.execute("""INSERT INTO doings (name) VALUES (?)""", (self.name.text(),))
@@ -150,7 +168,7 @@ class TimerPage(QWidget):
                                           f"об этом действии?",
                                           QMessageBox.StandardButton.Yes, QMessageBox.StandardButton.No)
             if intent == QMessageBox.StandardButton.Yes:
-                maybe_id = cur.execute("""SELECT id FROM doings WHERE LOWER(name) LIKE ? LIMIT 1""",
+                maybe_id = cur.execute("""SELECT id FROM doings WHERE MYLOWER(name) = ? LIMIT 1""",
                                        (self.doing.text().lower(),)).fetchall()
                 if maybe_id == []:
                     cur.execute("""INSERT INTO doings (name) VALUES (?)""", (self.doing.text(),))
