@@ -3,11 +3,11 @@ import sqlite3
 import time
 
 from PyQt6.QtCore import QEvent
-from PyQt6.QtWidgets import QMainWindow, QApplication, QWidget, QMessageBox
+from PyQt6.QtWidgets import QMainWindow, QApplication, QWidget, QMessageBox, QLabel
 from PyQt6 import uic
 from datetime import datetime, timedelta
 from threading import Thread
-
+from PyQt6.QtGui import QPixmap
 
 
 def except_hook(cls, exception, traceback):
@@ -59,6 +59,11 @@ class MainPage(QMainWindow):
         self.time.clicked.connect(self.timeclicked)
         self.timer.clicked.connect(self.timerclicked)
         self.setFixedSize(800, 600)
+        self.pixmap = QPixmap("image.jpg")
+        self.image = QLabel(self)
+        self.image.move(280, 250)
+        self.image.resize(250, 250)
+        self.image.setPixmap(self.pixmap)
 
     def statistclicked(self):
         self.statistic_form = StatisticPage()
@@ -175,7 +180,7 @@ class TimerPage(QWidget):
                 self.warning.setText('Отсчёт времени пошёл!')
                 self.date = str(datetime.now()).split()[0]
                 self.start = False
-                self.durat = 0
+                self.durat = 23 * 3600 + 59 * 60 + 55
                 t1 = Thread(target=self.timerView)
                 t1.start()
         else:
@@ -184,13 +189,13 @@ class TimerPage(QWidget):
             self.doing.setReadOnly(False)
             if self.durat >= 60:
                 intent = QMessageBox.question(self, 'Добавление записи',
-                                                f"Вы потратили на зaдачу '{self.doing.text()}' "
-                                                f"{self.durat // 3600} часов и {self.durat % 3600 // 60} минут. Добавить запись "
-                                                f"об этом действии?",
-                                                QMessageBox.StandardButton.Yes, QMessageBox.StandardButton.No)
+                                              f"Вы потратили на зaдачу '{self.doing.text()}' "
+                                              f"{self.durat // 3600} часов и {self.durat % 3600 // 60} минут. Добавить запись "
+                                              f"об этом действии?",
+                                              QMessageBox.StandardButton.Yes, QMessageBox.StandardButton.No)
                 if intent == QMessageBox.StandardButton.Yes:
                     maybe_id = cur.execute("""SELECT id FROM doings WHERE MYLOWER(name) = ? LIMIT 1""",
-                                            (self.doing.text().lower(),)).fetchall()
+                                           (self.doing.text().lower(),)).fetchall()
                     if maybe_id == []:
                         cur.execute("""INSERT INTO doings (name) VALUES (?)""", (self.doing.text(),))
                         doing_id = cur.lastrowid
@@ -198,7 +203,7 @@ class TimerPage(QWidget):
                         doing_id = maybe_id[0][0]
                     connection.commit()
                     cur.execute("""INSERT INTO timecheck (doingid, startdate, duration) 
-                                VALUES (?, ?, ?)""", (doing_id, self.date, self.durat // 60))
+                                                    VALUES (?, ?, ?)""", (doing_id, self.date, self.durat // 60))
                     connection.commit()
                     get_previous(self, 15)
                 self.hours.display(0)
@@ -207,6 +212,7 @@ class TimerPage(QWidget):
                 self.doing.setText('')
                 self.warning.setText('')
             else:
+                self.seconds.display(0)
                 self.warning.setText('Вы не можете потратить на задачу 0 минут.')
 
 
