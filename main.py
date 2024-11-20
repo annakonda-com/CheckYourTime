@@ -1,8 +1,9 @@
 import sys
 import sqlite3
 import time
+from sys import intern
 
-from PyQt6.QtCore import QEvent
+from PyQt6.QtCore import QEvent, QObject, pyqtSignal
 from PyQt6.QtWidgets import QMainWindow, QApplication, QWidget, QMessageBox, QLabel
 from PyQt6 import uic
 from datetime import datetime, timedelta
@@ -49,6 +50,13 @@ def mylower(line):
 connection = sqlite3.connect("CheckTimeDB.sqlite")
 cur = connection.cursor()
 connection.create_function('MYLOWER', 1, mylower)
+
+
+class OverSignal(QObject):
+    overS = pyqtSignal()
+
+class DayOverSignal(QObject):
+    dayOverS = pyqtSignal()
 
 
 class MainPage(QMainWindow):
@@ -154,21 +162,47 @@ class TimerPage(QWidget):
         self.doing.setText('')
         self.startstopbtn.clicked.connect(self.btnclicked)
         self.back.clicked.connect(self.back_fun)
+        self.over = OverSignal()
+        self.over.overS.connect(self.btnclicked)
+        self.dayover = DayOverSignal()
+        self.dayover.dayOverS.connect(self.day_is_over)
+        self.day_was_over = False
         get_previous(self, 15)
 
     def back_fun(self):
         back_to_main(self)
 
     def timerView(self):
-        while not self.start:
-            if self.durat == 23 * 3600 + 59 * 60 + 60:
-                self.warning.setText("Вы не можете делать что-то более суток! Пожалуйста, нажмите кнопку стоп!")
+        while True:
+            if self.start:
                 break
+            if self.durat == 23 * 3600 + 59 * 60 + 60:
+                self.over.overS.emit()
+                break
+            '''if datetime.now().hour == 23 and datetime.now().minute == 59:
+                self.dayover.dayOverS.emit()'''
+            if self.durat == 50:
+                self.dayover.dayOverS.emit()
             self.hours.display(self.durat // 3600)
             self.minuts.display(self.durat % 3600 // 60)
             self.seconds.display(self.durat % 3600 % 60)
             self.durat += 1
             time.sleep(1)
+
+    def day_is_over(self):
+        self.intents = {'doing_id': -1, 'duration': [], 'date': []}
+        if self.durat >= 60:
+            maybe_id = cur.execute("""SELECT id FROM doings WHERE MYLOWER(name) = ? LIMIT 1""",
+                                    (self.doing.text().lower(),)).fetchall()
+            if maybe_id == []:
+                cur.execute("""INSERT INTO doings (name) VALUES (?)""", (self.doing.text(),))
+                self.intents['doing_id'] = cur.lastrowid
+            else:
+                self.intents['doing_id'] = maybe_id[0][0]
+            self.intents['duration'].append(self.durat // 60)
+            self.intents['date'].append(str(datetime.now()).split()[0])
+            self.day_was_over = True
+
 
     def btnclicked(self):
         if self.start:
@@ -179,41 +213,73 @@ class TimerPage(QWidget):
                 self.startstopbtn.setText('СТОП')
                 self.warning.setText('Отсчёт времени пошёл!')
                 self.date = str(datetime.now()).split()[0]
+                self.durat = 45
                 self.start = False
-                self.durat = 23 * 3600 + 59 * 60 + 55
                 t1 = Thread(target=self.timerView)
                 t1.start()
         else:
-            self.start = True
-            self.startstopbtn.setText('СТАРТ')
-            self.doing.setReadOnly(False)
-            if self.durat >= 60:
-                intent = QMessageBox.question(self, 'Добавление записи',
-                                              f"Вы потратили на зaдачу '{self.doing.text()}' "
-                                              f"{self.durat // 3600} часов и {self.durat % 3600 // 60} минут. Добавить запись "
-                                              f"об этом действии?",
-                                              QMessageBox.StandardButton.Yes, QMessageBox.StandardButton.No)
-                if intent == QMessageBox.StandardButton.Yes:
-                    maybe_id = cur.execute("""SELECT id FROM doings WHERE MYLOWER(name) = ? LIMIT 1""",
-                                           (self.doing.text().lower(),)).fetchall()
-                    if maybe_id == []:
-                        cur.execute("""INSERT INTO doings (name) VALUES (?)""", (self.doing.text(),))
-                        doing_id = cur.lastrowid
-                    else:
-                        doing_id = maybe_id[0][0]
-                    connection.commit()
-                    cur.execute("""INSERT INTO timecheck (doingid, startdate, duration) 
-                                                    VALUES (?, ?, ?)""", (doing_id, self.date, self.durat // 60))
-                    connection.commit()
-                    get_previous(self, 15)
-                self.hours.display(0)
-                self.minuts.display(0)
-                self.seconds.display(0)
-                self.doing.setText('')
-                self.warning.setText('')
+            if self.day_was_over:
+                print('qq1')
+                if self.durat >= 60:
+                    self.intents['duration'].append(self.durat - self.intents['duration'][0] // 60)
+                    self.intents['date'].append(str(datetime.now()).split()[0])
+                    question = QMessageBox.question(self, 'Добавление записи',
+                                                  f"Вы потратили на зaдачу '{self.doing.text()}' {self.intents['date'][0]}"
+                                                  f"{self.intents['duration'][0] // 3600} часов и {self.intents['duration'][0] % 3600 // 60} минут,"
+                                                  f"и {self.intents['date'][1]} {self.intents['duration'][0] // 3600} часов и {self.intents['duration'][0] % 3600 // 60} минут Добавить запись "
+                                                  f"об этом действии?",
+                                                  QMessageBox.StandardButton.Yes, QMessageBox.StandardButton.No)
+                    if question == QMessageBox.StandardButton.Yes:
+                        cur.execute("""INSERT INTO timecheck (doingid, startdate, duration) 
+                                                        VALUES (?, ?, ?)""", (self.intents['doing_id'], self.intents['date'][0], self.intents['duration'][0] // 60))
+                        connection.commit()
+                        cur.execute("""INSERT INTO timecheck (doingid, startdate, duration) 
+                                                                                VALUES (?, ?, ?)""", (
+                        self.intents['doing_id'], self.intents['date'][1], self.intents['duration'][1] // 60))
+                        connection.commit()
+                        get_previous(self, 15)
+                    self.hours.display(0)
+                    self.minuts.display(0)
+                    self.seconds.display(0)
+                    self.doing.setText('')
+                    self.warning.setText('')
+                else:
+                    self.seconds.display(0)
+                    self.warning.setText('Вы не можете потратить на задачу 0 минут.')
+                    self.durat = 0
             else:
-                self.seconds.display(0)
-                self.warning.setText('Вы не можете потратить на задачу 0 минут.')
+                self.start = True
+                self.startstopbtn.setText('СТАРТ')
+                self.doing.setReadOnly(False)
+                if self.durat >= 60:
+                    intent = QMessageBox.question(self, 'Добавление записи',
+                                                  f"Вы потратили на зaдачу '{self.doing.text()}' "
+                                                  f"{self.durat // 3600} часов и {self.durat % 3600 // 60} минут. Добавить запись "
+                                                  f"об этом действии?",
+                                                  QMessageBox.StandardButton.Yes, QMessageBox.StandardButton.No)
+                    if intent == QMessageBox.StandardButton.Yes:
+                        maybe_id = cur.execute("""SELECT id FROM doings WHERE MYLOWER(name) = ? LIMIT 1""",
+                                               (self.doing.text().lower(),)).fetchall()
+                        if maybe_id == []:
+                            cur.execute("""INSERT INTO doings (name) VALUES (?)""", (self.doing.text(),))
+                            doing_id = cur.lastrowid
+                        else:
+                            doing_id = maybe_id[0][0]
+                        connection.commit()
+                        cur.execute("""INSERT INTO timecheck (doingid, startdate, duration) 
+                                                        VALUES (?, ?, ?)""", (doing_id, self.date, self.durat // 60))
+                        connection.commit()
+                        get_previous(self, 15)
+                    self.hours.display(0)
+                    self.minuts.display(0)
+                    self.seconds.display(0)
+                    self.doing.setText('')
+                    self.warning.setText('')
+                else:
+                    self.seconds.display(0)
+                    self.durat = 0
+                    self.warning.setText('Вы не можете потратить на задачу 0 минут.')
+
 
 
 if __name__ == '__main__':
