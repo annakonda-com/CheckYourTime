@@ -18,8 +18,8 @@ def except_hook(cls, exception, traceback):
 
 def back_to_main(prev_page): #Во всех окнах нужна функция для возврата, поэтому, чтобы не дублировать код она
     prev_page.close()        #Вынесена в отдельную глобвльную функцию.
-    ex = MainPage()
-    ex.show()
+    ap = MainPage()
+    ap.show()
 
 
 def get_previous(entity, limit):    # Функция для получения последних вводимых значений
@@ -101,7 +101,7 @@ class StatisticPage(QWidget):
         super().__init__()
         uic.loadUi("StatisticPage.ui", self)
         self.setFixedSize(800, 600)
-        self.setValues()
+        self.setvalues()
         self.back.clicked.connect(self.back_fun)
         self.export_day_btn.clicked.connect(self.export_day)
         self.export_week_btn.clicked.connect(self.export_week)
@@ -123,7 +123,7 @@ class StatisticPage(QWidget):
         f.close()
 
 
-    def setValues(self):
+    def setvalues(self):
         for_day = cur.execute("""SELECT timecheck.duration, doings.name FROM 
             timecheck JOIN doings ON doings.id = doingid WHERE startdate = ?""",
                               (str(datetime.now()).split()[0],)).fetchall()
@@ -131,12 +131,12 @@ class StatisticPage(QWidget):
             timecheck JOIN doings ON doings.id = doingid WHERE startdate >= ?""",
                                (str(datetime.now() -
                                     timedelta(days=datetime.now().weekday())).split()[0], )).fetchall()
-        if for_day != []:
+        if for_day:
             self.day.setText('За день:')
             for_day = do_dict(for_day)
             self.for_day_text = '\n'.join([name + '\t' + str(for_day[name]) for name in for_day])
             self.day_stat.setText(self.for_day_text)
-        if for_week != []:
+        if for_week:
             self.week.setText('За неделю:')
             for_week = do_dict(for_week)
             self.for_week_text = '\n'.join([name + '\t' + str(for_week[name]) for name in for_week])
@@ -162,7 +162,7 @@ class TimeInputPage(QWidget):
                 raise NoWrittenName
             maybe_id = cur.execute("""SELECT id FROM doings WHERE MYLOWER(name) LIKE ? LIMIT 1""",
                                    (self.name.text().lower(),)).fetchall()
-            if maybe_id == []:
+            if not maybe_id:
                 cur.execute("""INSERT INTO doings (name) VALUES (?)""", (self.name.text(),))
                 doing_id = cur.lastrowid
                 connection.commit()
@@ -196,7 +196,7 @@ class TimerPage(QWidget):
     def back_fun(self):
         back_to_main(self)
 
-    def timerView(self):
+    def timerview(self):
         while True:
             if self.start:
                 break
@@ -217,7 +217,7 @@ class TimerPage(QWidget):
         if self.durat >= 60:
             maybe_id = cur.execute("""SELECT id FROM doings WHERE MYLOWER(name) = ? LIMIT 1""",
                                    (self.doing.text().lower(),)).fetchall()
-            if maybe_id == []:
+            if not maybe_id:
                 cur.execute("""INSERT INTO doings (name) VALUES (?)""", (self.doing.text(),))
                 self.intents['doing_id'] = cur.lastrowid
             else:
@@ -251,7 +251,7 @@ class TimerPage(QWidget):
                 self.date = str(datetime.now()).split()[0]
                 self.durat = 0
                 self.start = False
-                t1 = Thread(target=self.timerView)
+                t1 = Thread(target=self.timerview)
                 t1.start()
             except NoWrittenName:
                 self.warning.setText('Введите название!')
@@ -317,7 +317,7 @@ class TimerPage(QWidget):
                     if intent == QMessageBox.StandardButton.Yes:
                         maybe_id = cur.execute("""SELECT id FROM doings WHERE MYLOWER(name) = ? LIMIT 1""",
                                                (self.doing.text().lower(),)).fetchall()
-                        if maybe_id == []:
+                        if not maybe_id:
                             cur.execute("""INSERT INTO doings (name) VALUES (?)""", (self.doing.text(),))
                             doing_id = cur.lastrowid
                         else:
