@@ -29,9 +29,9 @@
   <widget class="QLabel" name="status">
    <property name="geometry">
     <rect>
-     <x>290</x>
+     <x>220</x>
      <y>20</y>
-     <width>211</width>
+     <width>331</width>
      <height>41</height>
     </rect>
    </property>
@@ -83,6 +83,32 @@
    </property>
    <property name="text">
     <string/>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="export_day_btn">
+   <property name="geometry">
+    <rect>
+     <x>560</x>
+     <y>10</y>
+     <width>231</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Экспортировать статистику за день</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="export_week_btn">
+   <property name="geometry">
+    <rect>
+     <x>560</x>
+     <y>40</y>
+     <width>231</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Экспортировать статистику за неделю</string>
    </property>
   </widget>
  </widget>

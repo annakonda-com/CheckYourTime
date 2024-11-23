@@ -1,15 +1,13 @@
 import sys
 import sqlite3
 import time
-from sys import intern
 
-from PyQt6.QtCore import QEvent, QObject, pyqtSignal
+from PyQt6.QtCore import QObject, pyqtSignal
 from PyQt6.QtWidgets import QMainWindow, QApplication, QWidget, QMessageBox, QLabel
 from PyQt6 import uic
 from datetime import datetime, timedelta
 from threading import Thread
 from PyQt6.QtGui import QPixmap
-
 
 MINUTA = 'минута'
 HOUR = 'час'
@@ -18,20 +16,19 @@ def except_hook(cls, exception, traceback):
     sys.__excepthook__(cls, exception, traceback)
 
 
-def back_to_main(prev_page):
-    prev_page.close()
+def back_to_main(prev_page): #Во всех окнах нужна функция для возврата, поэтому, чтобы не дублировать код она
+    prev_page.close()        #Вынесена в отдельную глобвльную функцию.
     ex = MainPage()
     ex.show()
 
 
-def get_previous(entity, limit):
+def get_previous(entity, limit):    # Функция для получения последних вводимых значений
     previous = cur.execute("""SELECT name FROM doings ORDER BY id DESC LIMIT ?""", (limit,)).fetchall()
     entity.previous.setText('\n'.join([prev[0] for prev in previous]))
 
 
-def do_dict(
-        arr):  # принимает список кортежей вида (время, название) и создаёт словарь с сумой времени для каждой задачи
-    res = {}
+def do_dict(arr):  # принимает список кортежей вида (время, название)
+    res = {}       # и создаёт словарь с сумой времени для каждой задачи
     for el in arr:
         if el[1] in res:
             res[el[1]] += el[0]
@@ -40,9 +37,9 @@ def do_dict(
     return res
 
 
-def clean_db():
-    cur.execute("""DELETE FROM timecheck WHERE startdate > '2024-09-01' AND startdate < ?""",
-                (str(datetime.now() - timedelta(days=8)).split()[0],))
+def clean_db(): # Очищает БД от данных которые больше не будут доступны (прошлая неделя и раньше)
+    cur.execute("""DELETE FROM timecheck WHERE startdate < ?""",
+                (str(datetime.now() - timedelta(days=datetime.now().weekday())).split()[0],))
     connection.commit()
 
 
@@ -52,16 +49,22 @@ def mylower(line):
 
 connection = sqlite3.connect("CheckTimeDB.sqlite")
 cur = connection.cursor()
-connection.create_function('MYLOWER', 1, mylower)
+connection.create_function('MYLOWER', 1, mylower) # У sqlite есть проблемы с функцией LOWER для кириллицы,
+                                                             # создала свою функцию
 
 
-class OverSignal(QObject):
+class OverSignal(QObject): # Мой сигнал посылаемый, если секундомер запущен более 23 часов 59 минут
     overS = pyqtSignal()
 
 
-class DayOverSignal(QObject):
+class DayOverSignal(QObject): # Мой сигнал, посылаемый при завершении суток.
     dayOverS = pyqtSignal()
 
+class NoWrittenName(Exception):
+    pass
+
+class DurLessMin(Exception):
+    pass
 
 class MainPage(QMainWindow):
     def __init__(self):
@@ -100,29 +103,44 @@ class StatisticPage(QWidget):
         self.setFixedSize(800, 600)
         self.setValues()
         self.back.clicked.connect(self.back_fun)
+        self.export_day_btn.clicked.connect(self.export_day)
+        self.export_week_btn.clicked.connect(self.export_week)
         clean_db()
 
     def back_fun(self):
         back_to_main(self)
+
+    def export_day(self):
+        f = open(f"DayStatistic{str(datetime.now()).split()[0]}.txt", mode="w", encoding="utf-8")
+        f.write(self.for_day_text)
+        self.status.setText("Успешно экспортировано в директорию с программой!")
+        f.close()
+
+    def export_week(self):
+        f = open(f"WeekStatistic{str(datetime.now()).split()[0]}.txt", mode="w", encoding="utf-8")
+        f.write(self.for_week_text)
+        self.status.setText("Успешно экспортировано в директорию с программой!")
+        f.close()
+
 
     def setValues(self):
         for_day = cur.execute("""SELECT timecheck.duration, doings.name FROM 
             timecheck JOIN doings ON doings.id = doingid WHERE startdate = ?""",
                               (str(datetime.now()).split()[0],)).fetchall()
         for_week = cur.execute("""SELECT timecheck.duration, doings.name FROM 
-            timecheck JOIN doings ON doings.id = doingid WHERE startdate BETWEEN ? AND ?""",
-                               (str(datetime.now() - timedelta(days=7)).split()[0],
-                                str(datetime.now()).split()[0])).fetchall()
+            timecheck JOIN doings ON doings.id = doingid WHERE startdate >= ?""",
+                               (str(datetime.now() -
+                                    timedelta(days=datetime.now().weekday())).split()[0], )).fetchall()
         if for_day != []:
             self.day.setText('За день:')
             for_day = do_dict(for_day)
-            for_day_text = '\n'.join([name + '\t' + str(for_day[name]) for name in for_day])
-            self.day_stat.setText(for_day_text)
+            self.for_day_text = '\n'.join([name + '\t' + str(for_day[name]) for name in for_day])
+            self.day_stat.setText(self.for_day_text)
         if for_week != []:
             self.week.setText('За неделю:')
             for_week = do_dict(for_week)
-            for_week_text = '\n'.join([name + '\t' + str(for_week[name]) for name in for_week])
-            self.week_stat.setText(for_week_text)
+            self.for_week_text = '\n'.join([name + '\t' + str(for_week[name]) for name in for_week])
+            self.week_stat.setText(self.for_week_text)
 
 
 class TimeInputPage(QWidget):
@@ -139,7 +157,9 @@ class TimeInputPage(QWidget):
 
     def write(self):
         date = str(datetime.now()).split()[0]
-        if self.name.text() != '' and self.timeEdit.text() != '0:00':
+        try:
+            if self.name.text() == '' or self.timeEdit.text() == '0:00':
+                raise NoWrittenName
             maybe_id = cur.execute("""SELECT id FROM doings WHERE MYLOWER(name) LIKE ? LIMIT 1""",
                                    (self.name.text().lower(),)).fetchall()
             if maybe_id == []:
@@ -153,7 +173,7 @@ class TimeInputPage(QWidget):
             VALUES (?, ?, ?)""", (doing_id, date, duration))
             connection.commit()
             get_previous(self, 16)
-        else:
+        except NoWrittenName:
             self.warnings.setText("Оба поля должны быть заполнены!")
 
 
@@ -220,12 +240,11 @@ class TimerPage(QWidget):
                 return 'час'
             return 'часа'
 
-
     def btnclicked(self):
         if self.start:
-            if str(self.doing.text()) == '':
-                self.warning.setText('Введите название!')
-            else:
+            try:
+                if str(self.doing.text()) == '':
+                    raise NoWrittenName
                 self.doing.setReadOnly(True)
                 self.startstopbtn.setText('СТОП')
                 self.warning.setText('Отсчёт времени пошёл!')
@@ -234,9 +253,13 @@ class TimerPage(QWidget):
                 self.start = False
                 t1 = Thread(target=self.timerView)
                 t1.start()
+            except NoWrittenName:
+                self.warning.setText('Введите название!')
         else:
             if self.day_was_over:
-                if self.durat >= 60:
+                try:
+                    if self.durat < 60:
+                        raise DurLessMin
                     self.start = True
                     self.startstopbtn.setText('СТАРТ')
                     self.doing.setReadOnly(False)
@@ -259,7 +282,7 @@ class TimerPage(QWidget):
                     if question == QMessageBox.StandardButton.Yes:
                         cur.execute("""INSERT INTO timecheck (doingid, startdate, duration) 
                                                         VALUES (?, ?, ?)""", (
-                        self.intents['doing_id'], self.intents['date'][0], self.intents['duration'][0] // 60))
+                            self.intents['doing_id'], self.intents['date'][0], self.intents['duration'][0] // 60))
                         connection.commit()
                         cur.execute("""INSERT INTO timecheck (doingid, startdate, duration) 
                                                                                 VALUES (?, ?, ?)""", (
@@ -271,7 +294,7 @@ class TimerPage(QWidget):
                     self.seconds.display(0)
                     self.doing.setText('')
                     self.warning.setText('')
-                else:
+                except DurLessMin:
                     self.start = True
                     self.startstopbtn.setText('СТАРТ')
                     self.seconds.display(0)
@@ -281,7 +304,9 @@ class TimerPage(QWidget):
                 self.start = True
                 self.startstopbtn.setText('СТАРТ')
                 self.doing.setReadOnly(False)
-                if self.durat >= 60:
+                try:
+                    if self.durat < 60:
+                        raise DurLessMin
                     intent = QMessageBox.question(self, 'Добавление записи',
                                                   f"Вы потратили на зaдачу '{self.doing.text()}' "
                                                   f"{self.durat // 3600} {self.lingv_logic(self.durat // 3600, HOUR)} "
@@ -307,7 +332,7 @@ class TimerPage(QWidget):
                     self.seconds.display(0)
                     self.doing.setText('')
                     self.warning.setText('')
-                else:
+                except DurLessMin:
                     self.start = True
                     self.startstopbtn.setText('СТАРТ')
                     self.seconds.display(0)
