@@ -16,10 +16,10 @@ def except_hook(cls, exception, traceback):
     sys.__excepthook__(cls, exception, traceback)
 
 
-def back_to_main(prev_page): #Во всех окнах нужна функция для возврата, поэтому, чтобы не дублировать код она
-    prev_page.close()        #Вынесена в отдельную глобвльную функцию.
-    ap = MainPage()
-    ap.show()
+def back_to_main(prev_page): #Во всех окнах нужна функция для возврата, поэтому, чтобы не дублировать код она        #Вынесена в отдельную глобвльную функцию.
+    ex.setVisible(True)
+    prev_page.setVisible(False)
+
 
 
 def get_previous(entity, limit):    # Функция для получения последних вводимых значений
@@ -83,14 +83,17 @@ class MainPage(QMainWindow):
     def statistclicked(self):
         self.statistic_form = StatisticPage()
         self.statistic_form.show()
+        self.setVisible(False)
 
     def timeclicked(self):
         self.timeinput_form = TimeInputPage()
         self.timeinput_form.show()
+        self.setVisible(False)
 
     def timerclicked(self):
         self.timer_form = TimerPage()
         self.timer_form.show()
+        self.setVisible(False)
 
     def closeEvent(self, event):
         connection.close()
@@ -240,6 +243,42 @@ class TimerPage(QWidget):
                 return 'час'
             return 'часа'
 
+    def closeEvent(self, event):
+        if self.day_was_over:
+            try:
+                if self.durat < 60 or str(self.doing.text()) == '':
+                    raise DurLessMin
+                self.intents['duration'].append(self.durat - self.intents['duration'][0])
+                self.intents['date'].append(str(datetime.now()).split()[0])
+                cur.execute("""INSERT INTO timecheck (doingid, startdate, duration) 
+                                                VALUES (?, ?, ?)""", (
+                    self.intents['doing_id'], self.intents['date'][0], self.intents['duration'][0] // 60))
+                connection.commit()
+                cur.execute("""INSERT INTO timecheck (doingid, startdate, duration) 
+                                                                            VALUES (?, ?, ?)""", (
+                    self.intents['doing_id'], self.intents['date'][1], self.intents['duration'][1] // 60))
+                connection.commit()
+            except DurLessMin:
+                return
+        else:
+            try:
+                if self.durat < 60 or str(self.doing.text()) == '':
+                    raise DurLessMin
+                maybe_id = cur.execute("""SELECT id FROM doings WHERE MYLOWER(name) = ? LIMIT 1""",
+                                        (self.doing.text().lower(),)).fetchall()
+                if not maybe_id:
+                    cur.execute("""INSERT INTO doings (name) VALUES (?)""", (self.doing.text(),))
+                    doing_id = cur.lastrowid
+                else:
+                    doing_id = maybe_id[0][0]
+                connection.commit()
+                cur.execute("""INSERT INTO timecheck (doingid, startdate, duration) 
+                                                VALUES (?, ?, ?)""", (doing_id, self.date, self.durat // 60))
+                connection.commit()
+                get_previous(self, 15)
+            except DurLessMin:
+                return
+
     def btnclicked(self):
         if self.start:
             try:
@@ -338,6 +377,7 @@ class TimerPage(QWidget):
                     self.seconds.display(0)
                     self.durat = 0
                     self.warning.setText('Вы не можете потратить на задачу 0 минут.')
+
 
 
 if __name__ == '__main__':
